@@ -3,7 +3,7 @@ import sys
 import os
 
 pygame.init()
-(width, height) = 880, 600
+(width, height) = 750, 698
 screen = pygame.display.set_mode((width, height))
 screen.fill((0, 0, 0))
 
@@ -25,7 +25,7 @@ def terminate():
 
 
 def start_screen():
-    fon = pygame.transform.scale(load_image('fon.jpg'), (width, height))
+    fon = pygame.transform.scale(load_image('mar.png'), (width, height))
     screen.blit(fon, (0, 0))
 
     while True:
@@ -50,15 +50,15 @@ def load_level(filename):
 
 tile_images = {
     'wall': load_image('box.png'),
-    'empty': load_image('grass.png')
+    'empty': load_image('grass.png'),
+    'helper':pygame.transform.scale(load_image('helper.png'),(50,50))
 }
 player_positions = [pygame.transform.scale(load_image('marup.png'), (40,50)),
                     pygame.transform.scale(load_image('marr.png'), (40, 50)),
                     pygame.transform.scale(load_image('mard.png'), (40, 50)),
-                    pygame.transform.scale(load_image('marl.png'), (40, 50)),
-                    pygame.transform.scale(load_image('kafk.png'), (40, 50))]
-i =  -1
-player_image = player_positions[-1]
+                    pygame.transform.scale(load_image('marl.png'), (40, 50))]
+i =  0
+player_image = player_positions[0]
 tile_width = tile_height = 50
 
 
@@ -87,17 +87,15 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
 
-
-player = None
-
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 boxes_group = pygame.sprite.Group()
-
+helper_group = pygame.sprite.Group()
+health = 150
 
 def generate_level(level):
-    new_player, x, y = None, None, None
+    new_player, x, y, h1, h2 = None, None, None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '.':
@@ -107,7 +105,30 @@ def generate_level(level):
             elif level[y][x] == '@':
                 Tile('empty', x, y)
                 new_player = Player(x, y)
-    return new_player, x, y
+            elif level[y][x] == '&':
+                Tile('empty', x, y)
+                h1 = Helper_1('helper',x, y)
+            elif level[y][x] == '$':
+                Tile('empty', x, y)
+                h2 = Helper_2('helper',x, y)
+    return new_player, h1, h2, x, y
+
+
+class Helper_1(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(helper_group, all_sprites)
+        self.add(boxes_group)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x + 15, tile_height * pos_y + 5)
+
+class Helper_2(pygame.sprite.Sprite):
+    def __init__(self,tile_type, pos_x, pos_y):
+        super().__init__(helper_group, all_sprites)
+        self.add(boxes_group)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x + 15, tile_height * pos_y + 5)
 
 
 class Camera:
@@ -129,6 +150,8 @@ start_screen()
 l = load_level('l1')
 camera = Camera()
 player = generate_level(l)[0]
+h1 = generate_level(l)[1]
+h2 = generate_level(l)[2]
 running = True
 while running:
     screen.fill((0, 0, 0))
@@ -138,24 +161,30 @@ while running:
             running = False
     if pygame.key.get_pressed()[273]:
         player.rect.y -= 1
+        h1.rect.y -= 2
+        health -= 0.003
         i = 0
     if pygame.sprite.spritecollideany(player, boxes_group):
         player.rect.y += 1
+        h1.rect.y += 2
 
     if pygame.key.get_pressed()[274]:
         player.rect.y += 1
+        health -= 0.003
         i = 2
     if pygame.sprite.spritecollideany(player, boxes_group):
         player.rect.y -= 1
 
     if pygame.key.get_pressed()[275]:
         player.rect.x += 1
+        health -= 0.003
         i = 1
     if pygame.sprite.spritecollideany(player, boxes_group):
         player.rect.x -= 1
 
     if pygame.key.get_pressed()[276]:
         player.rect.x -= 1
+        health -= 0.003
         i = 3
     if pygame.sprite.spritecollideany(player, boxes_group):
         player.rect.x += 1
@@ -167,6 +196,8 @@ while running:
     tiles_group.draw(screen)
     boxes_group.draw(screen)
     player_group.draw(screen)
+    pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(player.rect.x + 200, player.rect.y - 300, health , 20))
+    pygame.draw.rect(screen, (255,255,255), pygame.Rect(player.rect.x + 200, player.rect.y - 300, 150, 20), 1)
+    helper_group.draw(screen)
     pygame.display.flip()
     clock.tick(150)
-
