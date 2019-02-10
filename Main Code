@@ -25,7 +25,7 @@ def terminate():
 
 
 def start_screen():
-    fon = pygame.transform.scale(load_image('mar.png'), (width, height))
+    fon = pygame.transform.scale(load_image('kafk.png'), (width, height))
     screen.blit(fon, (0, 0))
 
     while True:
@@ -39,6 +39,16 @@ def start_screen():
         pygame.display.flip()
         clock.tick(50)
 
+def end_screen():
+    fon = pygame.transform.scale(load_image('game over.jpg'), (width, height))
+    screen.blit(fon, (0, 0))
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+        pygame.display.flip()
+        clock.tick(50)
 
 def load_level(filename):
     filename = 'dist/' + filename
@@ -48,17 +58,65 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
+def transgression(x1, y1, x2, y2, lb):
+    lab = []
+    for lu in lb:
+        stroka = []
+        for li in lu:
+            if li == '#':
+                stroka.append(-1)
+            else:
+                stroka.append(0)
+        lab.append(stroka)
+    n = len(lab)
+    m = len(lab[0])
+    x_1, y_1 = x1, y1
+    x_2, y_2 = x2, y2
+    lab = voln(x_1,y_1,1,n,m,lab)
+    if lab[x_2][y_2] > 0:
+        return True
+    else:
+        return False
+
+def load_level(filename):
+    filename = 'dist/' + filename
+    with open(filename, 'r') as mapFile:
+        level_map = [line.strip() for line in mapFile]
+    max_width = max(map(len, level_map))
+    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
+
+
+def voln(x,y,cur,n,m,lab):
+    lab[x][y] = cur
+    if y+1<m:
+        if lab[x][y+1] == 0 or (lab[x][y+1] != -1 and lab[x][y+1] > cur):
+            voln(x,y+1,cur+1,n,m,lab)
+    if x+1<n:
+        if lab[x+1][y] == 0 or (lab[x+1][y] != -1 and lab[x+1][y] > cur):
+            voln(x+1,y,cur+1,n,m,lab)
+    if x-1>=0:
+        if lab[x-1][y] == 0 or (lab[x-1][y] != -1 and lab[x-1][y] > cur):
+            voln(x-1,y,cur+1,n,m,lab)
+    if y-1>=0:
+        if lab[x][y-1] == 0 or (lab[x][y-1] != -1 and lab[x][y-1] > cur):
+            voln(x,y-1,cur+1,n,m,lab)
+    return lab
+
+
+
 tile_images = {
     'wall': load_image('box.png'),
     'empty': load_image('grass.png'),
-    'helper':pygame.transform.scale(load_image('helper.png'),(50,50))
+    'helper':  pygame.transform.scale(load_image('helper.png'), (50,50)),
+    'bomb':  pygame.transform.scale(load_image("bomb.png"), (50,50)),
+    'trash' : pygame.transform.scale(load_image("trash.png"), (50,50))
 }
 player_positions = [pygame.transform.scale(load_image('marup.png'), (40,50)),
                     pygame.transform.scale(load_image('marr.png'), (40, 50)),
                     pygame.transform.scale(load_image('mard.png'), (40, 50)),
                     pygame.transform.scale(load_image('marl.png'), (40, 50))]
 i =  0
-player_image = player_positions[0]
+player_image = player_positions[-0]
 tile_width = tile_height = 50
 
 
@@ -74,6 +132,15 @@ class Tile(pygame.sprite.Sprite):
 class Box(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(boxes_group, all_sprites)
+        self.add(prep_group)
+        self.image = tile_images[tile_type]
+        self.image = pygame.transform.scale(self.image, (50, 50))
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x, tile_height * pos_y)
+
+class Trash(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(trash_group, all_sprites)
         self.image = tile_images[tile_type]
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect().move(
@@ -87,15 +154,35 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
 
+class Helper(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(helper_group, all_sprites)
+        self.add(prep_group)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x + 15, tile_height * pos_y + 5)
+
+class Bomb(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(bomb_group, all_sprites)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x + 15, tile_height * pos_y + 5)
+
+player = None
+
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 boxes_group = pygame.sprite.Group()
+prep_group = pygame.sprite.Group()
 helper_group = pygame.sprite.Group()
-health = 150
+bomb_group = pygame.sprite.Group()
+trash_group = pygame.sprite.Group()
+
 
 def generate_level(level):
-    new_player, x, y, h1, h2 = None, None, None, None, None
+    new_player, h1, h2 = None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '.':
@@ -107,29 +194,17 @@ def generate_level(level):
                 new_player = Player(x, y)
             elif level[y][x] == '&':
                 Tile('empty', x, y)
-                h1 = Helper_1('helper',x, y)
+                h1 = Helper('helper', x, y)
             elif level[y][x] == '$':
                 Tile('empty', x, y)
-                h2 = Helper_2('helper',x, y)
-    return new_player, h1, h2, x, y
-
-
-class Helper_1(pygame.sprite.Sprite):
-    def __init__(self, tile_type, pos_x, pos_y):
-        super().__init__(helper_group, all_sprites)
-        self.add(boxes_group)
-        self.image = tile_images[tile_type]
-        self.rect = self.image.get_rect().move(
-            tile_width * pos_x + 15, tile_height * pos_y + 5)
-
-class Helper_2(pygame.sprite.Sprite):
-    def __init__(self,tile_type, pos_x, pos_y):
-        super().__init__(helper_group, all_sprites)
-        self.add(boxes_group)
-        self.image = tile_images[tile_type]
-        self.rect = self.image.get_rect().move(
-            tile_width * pos_x + 15, tile_height * pos_y + 5)
-
+                h2 = Helper('helper', x, y)
+            elif level[y][x] == 'b':
+                Tile('empty', x, y)
+                Bomb('bomb', x, y)
+            elif level[y][x] == 't':
+                Tile('empty', x, y)
+                Trash('trash', x, y)
+    return new_player, h1, h2
 
 class Camera:
     def __init__(self):
@@ -146,58 +221,61 @@ class Camera:
 
 
 clock = pygame.time.Clock()
-start_screen()
+#start_screen()
+health = 150
 l = load_level('l1')
 camera = Camera()
-player = generate_level(l)[0]
-h1 = generate_level(l)[1]
-h2 = generate_level(l)[2]
+player, h1, h2 = generate_level(l)
 running = True
 while running:
     screen.fill((0, 0, 0))
-    s = pygame.sprite.spritecollideany(player, boxes_group)
+    s = pygame.sprite.spritecollideany(player, prep_group)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
     if pygame.key.get_pressed()[273]:
         player.rect.y -= 1
-        h1.rect.y -= 2
         health -= 0.003
         i = 0
-    if pygame.sprite.spritecollideany(player, boxes_group):
+    if pygame.sprite.spritecollideany(player, prep_group):
         player.rect.y += 1
-        h1.rect.y += 2
 
     if pygame.key.get_pressed()[274]:
         player.rect.y += 1
         health -= 0.003
         i = 2
-    if pygame.sprite.spritecollideany(player, boxes_group):
+    if pygame.sprite.spritecollideany(player, prep_group):
         player.rect.y -= 1
 
     if pygame.key.get_pressed()[275]:
         player.rect.x += 1
         health -= 0.003
         i = 1
-    if pygame.sprite.spritecollideany(player, boxes_group):
+    if pygame.sprite.spritecollideany(player, prep_group):
         player.rect.x -= 1
 
     if pygame.key.get_pressed()[276]:
         player.rect.x -= 1
         health -= 0.003
         i = 3
-    if pygame.sprite.spritecollideany(player, boxes_group):
+    if pygame.sprite.spritecollideany(player, prep_group):
         player.rect.x += 1
-
+    if pygame.sprite.spritecollideany(player, bomb_group):
+        health = 0
+        bomb_group.sprites()[1].image = load_image('boom.png')
+    if pygame.sprite.spritecollideany(player, trash_group):
+        health = 150
     player.image = player_positions[i]
     camera.update(player)
     for sprite in all_sprites:
         camera.apply(sprite)
     tiles_group.draw(screen)
     boxes_group.draw(screen)
-    player_group.draw(screen)
-    pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(player.rect.x + 200, player.rect.y - 300, health , 20))
-    pygame.draw.rect(screen, (255,255,255), pygame.Rect(player.rect.x + 200, player.rect.y - 300, 150, 20), 1)
     helper_group.draw(screen)
+    bomb_group.draw(screen)
+    trash_group.draw(screen)
+    player_group.draw(screen)
+    pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(player.rect.x + 200, player.rect.y - 300, health, 20))
+    pygame.draw.rect(screen, (255, 255, 255), pygame.Rect(player.rect.x + 200, player.rect.y - 300, 150, 20), 1)
     pygame.display.flip()
     clock.tick(150)
