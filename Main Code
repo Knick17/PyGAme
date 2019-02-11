@@ -1,6 +1,7 @@
 import pygame
 import sys
 import os
+import random
 
 pygame.init()
 (width, height) = 750, 698
@@ -39,6 +40,7 @@ def start_screen():
         pygame.display.flip()
         clock.tick(50)
 
+
 def end_screen():
     fon = pygame.transform.scale(load_image('game over.jpg'), (width, height))
     screen.blit(fon, (0, 0))
@@ -49,6 +51,7 @@ def end_screen():
                 terminate()
         pygame.display.flip()
         clock.tick(50)
+
 
 def load_level(filename):
     filename = 'dist/' + filename
@@ -72,11 +75,12 @@ def transgression(x1, y1, x2, y2, lb):
     m = len(lab[0])
     x_1, y_1 = x1, y1
     x_2, y_2 = x2, y2
-    lab = voln(x_1,y_1,1,n,m,lab)
+    lab = voln(x_1, y_1, 1, n, m, lab)
     if lab[x_2][y_2] > 0:
         return True
     else:
         return False
+
 
 def load_level(filename):
     filename = 'dist/' + filename
@@ -86,36 +90,36 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
-def voln(x,y,cur,n,m,lab):
+def voln(x, y, cur, n, m, lab):
     lab[x][y] = cur
-    if y+1<m:
-        if lab[x][y+1] == 0 or (lab[x][y+1] != -1 and lab[x][y+1] > cur):
-            voln(x,y+1,cur+1,n,m,lab)
-    if x+1<n:
-        if lab[x+1][y] == 0 or (lab[x+1][y] != -1 and lab[x+1][y] > cur):
-            voln(x+1,y,cur+1,n,m,lab)
-    if x-1>=0:
-        if lab[x-1][y] == 0 or (lab[x-1][y] != -1 and lab[x-1][y] > cur):
-            voln(x-1,y,cur+1,n,m,lab)
-    if y-1>=0:
-        if lab[x][y-1] == 0 or (lab[x][y-1] != -1 and lab[x][y-1] > cur):
-            voln(x,y-1,cur+1,n,m,lab)
+    if y + 1 < m:
+        if lab[x][y + 1] == 0 or (lab[x][y + 1] != -1 and lab[x][y + 1] > cur):
+            voln(x, y + 1, cur + 1, n, m, lab)
+    if x + 1 < n:
+        if lab[x + 1][y] == 0 or (lab[x + 1][y] != -1 and lab[x + 1][y] > cur):
+            voln(x + 1, y, cur + 1, n, m, lab)
+    if x - 1 >= 0:
+        if lab[x - 1][y] == 0 or (lab[x - 1][y] != -1 and lab[x - 1][y] > cur):
+            voln(x - 1, y, cur + 1, n, m, lab)
+    if y - 1 >= 0:
+        if lab[x][y - 1] == 0 or (lab[x][y - 1] != -1 and lab[x][y - 1] > cur):
+            voln(x, y - 1, cur + 1, n, m, lab)
     return lab
-
 
 
 tile_images = {
     'wall': load_image('box.png'),
     'empty': load_image('grass.png'),
-    'helper':  pygame.transform.scale(load_image('helper.png'), (50,50)),
-    'bomb':  pygame.transform.scale(load_image("bomb.png"), (50,50)),
-    'trash' : pygame.transform.scale(load_image("trash.png"), (50,50))
+    'helper': pygame.transform.scale(load_image('helper.png'), (50, 50)),
+    'bomb': pygame.transform.scale(load_image("bomb.png"), (50, 50)),
+    'trash': pygame.transform.scale(load_image("trash.png"), (50, 50)),
+    'mush': pygame.transform.scale(load_image("mushroom.png"), (50, 50))
 }
-player_positions = [pygame.transform.scale(load_image('marup.png'), (40,50)),
+player_positions = [pygame.transform.scale(load_image('marup.png'), (40, 50)),
                     pygame.transform.scale(load_image('marr.png'), (40, 50)),
                     pygame.transform.scale(load_image('mard.png'), (40, 50)),
                     pygame.transform.scale(load_image('marl.png'), (40, 50))]
-i =  0
+i = 0
 player_image = player_positions[-0]
 tile_width = tile_height = 50
 
@@ -128,6 +132,16 @@ class Tile(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
 
+    def remember(self):
+        self.back = self.rect.copy()
+
+    def update(self):
+        self.rect = self.rect.move(random.randrange(3) - 1,
+                                   random.randrange(3) - 1)
+
+    def update2(self):
+        self.rect = self.rect.move(self.back)
+
 
 class Box(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
@@ -138,6 +152,17 @@ class Box(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
 
+    def remember(self):
+        self.back = self.rect.copy()
+
+    def update(self):
+        self.rect = self.rect.move(random.randrange(3) - 1,
+                                   random.randrange(3) - 1)
+
+    def update2(self):
+        self.rect = self.rect.move(self.back)
+
+
 class Trash(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(trash_group, all_sprites)
@@ -145,6 +170,35 @@ class Trash(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
+
+    def remember(self):
+        self.back = self.rect.copy()
+
+    def update(self):
+        self.rect = self.rect.move(random.randrange(3) - 1,
+                                   random.randrange(3) - 1)
+
+    def update2(self):
+        self.rect = self.rect.move(self.back)
+
+
+class Mushroom(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        super().__init__(mushroom_group, all_sprites)
+        self.image = tile_images[tile_type]
+        self.image = pygame.transform.scale(self.image, (50, 50))
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x, tile_height * pos_y)
+
+    def remember(self):
+        self.back = self.rect.copy()
+
+    def update(self):
+        self.rect = self.rect.move(random.randrange(3) - 1,
+                                   random.randrange(3) - 1)
+
+    def update2(self):
+        self.rect = self.rect.move(self.back)
 
 
 class Player(pygame.sprite.Sprite):
@@ -154,6 +208,8 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
 
+
+
 class Helper(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(helper_group, all_sprites)
@@ -161,6 +217,16 @@ class Helper(pygame.sprite.Sprite):
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
+    def remember(self):
+        self.back = self.rect.copy()
+
+    def update(self):
+        self.rect = self.rect.move(random.randrange(3) - 1,
+                                   random.randrange(3) - 1)
+
+    def update2(self):
+        self.rect = self.rect.move(self.back)
+
 
 class Bomb(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
@@ -168,6 +234,17 @@ class Bomb(pygame.sprite.Sprite):
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
+
+    def remember(self):
+        self.back = self.rect.copy()
+
+    def update(self):
+        self.rect = self.rect.move(random.randrange(3) - 1,
+                                   random.randrange(3) - 1)
+
+    def update2(self):
+        self.rect = self.rect.move(self.back)
+
 
 player = None
 
@@ -179,6 +256,9 @@ prep_group = pygame.sprite.Group()
 helper_group = pygame.sprite.Group()
 bomb_group = pygame.sprite.Group()
 trash_group = pygame.sprite.Group()
+explosion = pygame.sprite.Group()
+mushroom_group = pygame.sprite.Group()
+flag = 0
 
 
 def generate_level(level):
@@ -204,7 +284,11 @@ def generate_level(level):
             elif level[y][x] == 't':
                 Tile('empty', x, y)
                 Trash('trash', x, y)
+            elif level[y][x] == 'm':
+                Tile('empty', x, y)
+                Mushroom('mush', x, y)
     return new_player, h1, h2
+
 
 class Camera:
     def __init__(self):
@@ -221,7 +305,7 @@ class Camera:
 
 
 clock = pygame.time.Clock()
-#start_screen()
+# start_screen()
 health = 150
 l = load_level('l1')
 camera = Camera()
@@ -235,36 +319,50 @@ while running:
             running = False
     if pygame.key.get_pressed()[273]:
         player.rect.y -= 1
-        health -= 0.003
         i = 0
     if pygame.sprite.spritecollideany(player, prep_group):
         player.rect.y += 1
 
     if pygame.key.get_pressed()[274]:
         player.rect.y += 1
-        health -= 0.003
         i = 2
     if pygame.sprite.spritecollideany(player, prep_group):
         player.rect.y -= 1
 
     if pygame.key.get_pressed()[275]:
         player.rect.x += 1
-        health -= 0.003
         i = 1
     if pygame.sprite.spritecollideany(player, prep_group):
         player.rect.x -= 1
 
     if pygame.key.get_pressed()[276]:
         player.rect.x -= 1
-        health -= 0.003
         i = 3
     if pygame.sprite.spritecollideany(player, prep_group):
         player.rect.x += 1
+
     if pygame.sprite.spritecollideany(player, bomb_group):
-        health = 0
-        bomb_group.sprites()[1].image = load_image('boom.png')
+        for lu in bomb_group:
+            if pygame.sprite.pygame.sprite.collide_mask(player, lu):
+                health = (health - 50) * (health - 50 >= 0) % 150
+                lu.image = load_image('boom.png')
+                lu.add(explosion)
+                bomb_group.remove_internal(lu)
     if pygame.sprite.spritecollideany(player, trash_group):
-        health = 150
+        for lu in trash_group:
+            if pygame.sprite.pygame.sprite.collide_mask(player, lu):
+                health = 150
+                trash_group.remove_internal(lu)
+    if pygame.sprite.spritecollideany(player, mushroom_group):
+        if flag == 0:
+            all_sprites.rememder()
+        all_sprites.update()
+        flag += 1
+    if flag >= 1 and not pygame.sprite.spritecollideany(player, mushroom_group):
+        all_sprites.update2()
+        flag = 0
+
+    health -= 0.01
     player.image = player_positions[i]
     camera.update(player)
     for sprite in all_sprites:
@@ -274,8 +372,11 @@ while running:
     helper_group.draw(screen)
     bomb_group.draw(screen)
     trash_group.draw(screen)
+    explosion.draw(screen)
+    mushroom_group.draw(screen)
     player_group.draw(screen)
     pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(player.rect.x + 200, player.rect.y - 300, health, 20))
     pygame.draw.rect(screen, (255, 255, 255), pygame.Rect(player.rect.x + 200, player.rect.y - 300, 150, 20), 1)
     pygame.display.flip()
     clock.tick(150)
+    print(flag)
